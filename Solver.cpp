@@ -13,7 +13,7 @@ int main()
 	return 0;
 }
 
-unsigned char kilordle::Solver::CalculatePerformance(const std::vector<Quickset> &FullCoverage, const std::vector<const char*>& CurrentGuesses)
+unsigned char kilordle::Solver::CalculatePerformance(const std::vector<Quickset> &FullCoverage, const std::vector<const char*> &CurrentGuesses)
 {
 	unsigned char Result = 0;
 	Quickset ActiveChars[WORD_LENGTH];
@@ -35,7 +35,20 @@ unsigned char kilordle::Solver::CalculatePerformance(const std::vector<Quickset>
 	return Result;
 }
 
-void kilordle::BestFirstSolver::FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vector<const char*> &CurrentGuesses)
+void kilordle::Solver::PrintGuesses(const std::vector<const char*> &GuessList)
+{
+	for (auto X : GuessList)
+	{
+		for (short Index = 0; Index < WORD_LENGTH; Index++)
+		{
+			std::cout << X[Index];
+		}
+
+		std::cout << std::endl;
+	}
+}
+
+void kilordle::BestFirstSolver::FindNextGuess(const std::vector<Quickset> &FullCoverage, std::vector<const char*> &CurrentGuesses)
 {
 	const char* BestGuess = WORDS[0];
 	short BestGuessHitCount = 0;
@@ -77,7 +90,7 @@ void kilordle::BestFirstSolver::Solve()
 
 	ComputeFullCoverage(FullCoverage);
 
-	std::cout << "best-first optimized guesses are" << std::endl;
+	std::cout << "best-first optimized guesses are: " << std::endl;
 
 	std::vector<const char*> CurrentGuesses;
 
@@ -86,17 +99,10 @@ void kilordle::BestFirstSolver::Solve()
 		FindNextGuess(FullCoverage, CurrentGuesses);
 	}
 
-	for (auto X : CurrentGuesses)
-	{
-		for (short Index = 0; Index < WORD_LENGTH; Index++)
-		{
-			std::cout << X[Index];
-		}
-
-		std::cout << std::endl;
-	}
+	PrintGuesses(CurrentGuesses);
 
 	std::cout << std::endl << "list performance: " << (unsigned int)CalculatePerformance(FullCoverage, CurrentGuesses) << std::endl;
+	std::cout << std::endl << "reddit best list: " << std::endl;
 
 	std::vector<const char*> RedditOptimalGuesses;
 
@@ -130,6 +136,8 @@ void kilordle::BestFirstSolver::Solve()
 	RedditOptimalGuesses.push_back(FindWord("affix"));
 	RedditOptimalGuesses.push_back(FindWord("qajaq"));
 	RedditOptimalGuesses.push_back(FindWord("squib"));
+
+	PrintGuesses(RedditOptimalGuesses);
 
 	std::cout << std::endl << "reddit optimized list performance: " << (unsigned int)CalculatePerformance(FullCoverage, RedditOptimalGuesses) << std::endl;
 

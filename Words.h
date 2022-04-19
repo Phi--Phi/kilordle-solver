@@ -12,7 +12,7 @@ namespace kilordle
 
 	static const unsigned short WORD_LENGTH = 5;
 
-	void ComputeFullCoverage(std::vector<Quickset>& FullCoverage)
+	void ComputeFullCoverage(std::vector<Quickset> &FullCoverage)
 	{
 		for (const char* Wordle : WORDLES)
 		{
