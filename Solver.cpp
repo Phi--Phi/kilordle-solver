@@ -13,6 +13,52 @@ int main()
 	return 0;
 }
 
+kilordle::Solver::Solver()
+{
+	FullCoverage.resize(WORD_LENGTH);
+	FullCoverage.shrink_to_fit();
+	ComputeFullCoverage(FullCoverage);
+
+	FullCoveragePerformance = 0;
+
+	for (auto X : FullCoverage)
+	{
+		FullCoveragePerformance += X.BitCount();
+	}
+
+	RedditOptimalGuesses.reserve(30);
+	RedditOptimalGuesses.push_back(FindWord("fixer"));
+	RedditOptimalGuesses.push_back(FindWord("rowdy"));
+	RedditOptimalGuesses.push_back(FindWord("crump"));
+	RedditOptimalGuesses.push_back(FindWord("aback"));
+	RedditOptimalGuesses.push_back(FindWord("twixt"));
+	RedditOptimalGuesses.push_back(FindWord("banjo"));
+	RedditOptimalGuesses.push_back(FindWord("usque"));
+	RedditOptimalGuesses.push_back(FindWord("glyph"));
+	RedditOptimalGuesses.push_back(FindWord("kvell"));
+	RedditOptimalGuesses.push_back(FindWord("schwa"));
+	RedditOptimalGuesses.push_back(FindWord("nkosi"));
+	RedditOptimalGuesses.push_back(FindWord("ydrad"));
+	RedditOptimalGuesses.push_back(FindWord("zesty"));
+	RedditOptimalGuesses.push_back(FindWord("djinn"));
+	RedditOptimalGuesses.push_back(FindWord("vuggs"));
+	RedditOptimalGuesses.push_back(FindWord("optic"));
+	RedditOptimalGuesses.push_back(FindWord("hydro"));
+	RedditOptimalGuesses.push_back(FindWord("whiff"));
+	RedditOptimalGuesses.push_back(FindWord("aglow"));
+	RedditOptimalGuesses.push_back(FindWord("enzym"));
+	RedditOptimalGuesses.push_back(FindWord("itchy"));
+	RedditOptimalGuesses.push_back(FindWord("luvvy"));
+	RedditOptimalGuesses.push_back(FindWord("mekka"));
+	RedditOptimalGuesses.push_back(FindWord("pzazz"));
+	RedditOptimalGuesses.push_back(FindWord("embog"));
+	RedditOptimalGuesses.push_back(FindWord("jambu"));
+	RedditOptimalGuesses.push_back(FindWord("expel"));
+	RedditOptimalGuesses.push_back(FindWord("affix"));
+	RedditOptimalGuesses.push_back(FindWord("qajaq"));
+	RedditOptimalGuesses.push_back(FindWord("squib"));
+}
+
 unsigned char kilordle::Solver::CalculatePerformance(const std::vector<Quickset> &FullCoverage, const std::vector<const char*> &CurrentGuesses)
 {
 	unsigned char Result = 0;
@@ -82,71 +128,32 @@ void kilordle::BestFirstSolver::FindNextGuess(const std::vector<Quickset> &FullC
 	CurrentGuesses.push_back(BestGuess);
 }
 
-void kilordle::BestFirstSolver::Solve()
+kilordle::BestFirstSolver::BestFirstSolver() : Solver()
 {
-	constexpr char GUESS_DEPTH = 38;
+}
 
-	std::vector<Quickset> FullCoverage(WORD_LENGTH);
-
-	ComputeFullCoverage(FullCoverage);
-
+unsigned short kilordle::BestFirstSolver::Solve()
+{
 	std::cout << "best-first optimized guesses are: " << std::endl;
 
-	std::vector<const char*> CurrentGuesses;
-
-	for (char Index = 0; Index < GUESS_DEPTH; Index++)
+	while (CalculatePerformance(FullCoverage, CurrentGuesses) < FullCoveragePerformance)
 	{
 		FindNextGuess(FullCoverage, CurrentGuesses);
 	}
 
 	PrintGuesses(CurrentGuesses);
 
-	std::cout << std::endl << "list performance: " << (unsigned int)CalculatePerformance(FullCoverage, CurrentGuesses) << std::endl;
-	std::cout << std::endl << "reddit best list: " << std::endl;
+	std::cout << std::endl << "we did it in " << CurrentGuesses.size() << " guesses" << std::endl;
 
-	std::vector<const char*> RedditOptimalGuesses;
+	return CurrentGuesses.size();
+}
 
-	RedditOptimalGuesses.push_back(FindWord("fixer"));
-	RedditOptimalGuesses.push_back(FindWord("rowdy"));
-	RedditOptimalGuesses.push_back(FindWord("crump"));
-	RedditOptimalGuesses.push_back(FindWord("aback"));
-	RedditOptimalGuesses.push_back(FindWord("twixt"));
-	RedditOptimalGuesses.push_back(FindWord("banjo"));
-	RedditOptimalGuesses.push_back(FindWord("usque"));
-	RedditOptimalGuesses.push_back(FindWord("glyph"));
-	RedditOptimalGuesses.push_back(FindWord("kvell"));
-	RedditOptimalGuesses.push_back(FindWord("schwa"));
-	RedditOptimalGuesses.push_back(FindWord("nkosi"));
-	RedditOptimalGuesses.push_back(FindWord("ydrad"));
-	RedditOptimalGuesses.push_back(FindWord("zesty"));
-	RedditOptimalGuesses.push_back(FindWord("djinn"));
-	RedditOptimalGuesses.push_back(FindWord("vuggs"));
-	RedditOptimalGuesses.push_back(FindWord("optic"));
-	RedditOptimalGuesses.push_back(FindWord("hydro"));
-	RedditOptimalGuesses.push_back(FindWord("whiff"));
-	RedditOptimalGuesses.push_back(FindWord("aglow"));
-	RedditOptimalGuesses.push_back(FindWord("enzym"));
-	RedditOptimalGuesses.push_back(FindWord("itchy"));
-	RedditOptimalGuesses.push_back(FindWord("luvvy"));
-	RedditOptimalGuesses.push_back(FindWord("mekka"));
-	RedditOptimalGuesses.push_back(FindWord("pzazz"));
-	RedditOptimalGuesses.push_back(FindWord("embog"));
-	RedditOptimalGuesses.push_back(FindWord("jambu"));
-	RedditOptimalGuesses.push_back(FindWord("expel"));
-	RedditOptimalGuesses.push_back(FindWord("affix"));
-	RedditOptimalGuesses.push_back(FindWord("qajaq"));
-	RedditOptimalGuesses.push_back(FindWord("squib"));
+kilordle::ExhuastiveSolver::ExhuastiveSolver() : Solver()
+{
+}
 
-	PrintGuesses(RedditOptimalGuesses);
+unsigned short kilordle::ExhuastiveSolver::Solve()
+{
 
-	std::cout << std::endl << "reddit optimized list performance: " << (unsigned int)CalculatePerformance(FullCoverage, RedditOptimalGuesses) << std::endl;
-
-	unsigned int MaxHull = 0;
-
-	for (auto x : FullCoverage)
-	{
-		MaxHull += x.BitCount();
-	}
-
-	std::cout << std::endl << "max possible performance: " << MaxHull << std::endl;
+	return 100U;
 }
