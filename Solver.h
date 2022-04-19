@@ -6,8 +6,19 @@
 
 namespace kilordle
 {
-	int main();
-	short CalculatePerformanceOfGuess(const std::vector<Quickset> &FullCoverage, const std::vector<const char*>& CurrentGuesses, const char* Word);
-	void FindNextGuess(const std::vector<Quickset> &FullCoverage, std::vector<const char*>& CurrentGuesses);
-	const char* FindWord(const char*);
+	class Solver
+	{
+	public:
+		virtual void Solve() = 0;
+		unsigned char CalculatePerformance(const std::vector<Quickset>& FullCoverage, const std::vector<const char*>& CurrentGuesses);
+	};
+
+	class BestFirstSolver : public Solver
+	{
+	public:
+		virtual void Solve() override;
+	private:
+		void FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vector<const char*>& CurrentGuesses);
+	};
+	
 }

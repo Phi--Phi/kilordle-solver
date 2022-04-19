@@ -4,42 +4,30 @@
 #include <iostream>
 #include <algorithm>
 
-namespace kilordle
-{
-	void ComputeFullCoverage(std::vector<Quickset>& FullCoverage)
-	{
-		for (const char* Wordle : WORDLES)
-		{
-			for (char Index = 0; Index < 5; Index++)
-			{
-				FullCoverage[Index].insert(Wordle[Index]);
-			}
-		}
-	}
-}
-
 int main()
 {
-	return kilordle::main();
+	kilordle::BestFirstSolver BFS;
+
+	BFS.Solve();
+
+	return 0;
 }
 
-short kilordle::CalculatePerformanceOfGuess(const std::vector<Quickset> &FullCoverage, const std::vector<const char*>& CurrentGuesses, const char* Word)
+unsigned char kilordle::Solver::CalculatePerformance(const std::vector<Quickset> &FullCoverage, const std::vector<const char*>& CurrentGuesses)
 {
-	short Result = 0;
-	Quickset ActiveChars[5];
+	unsigned char Result = 0;
+	Quickset ActiveChars[WORD_LENGTH];
 
 	for (const char* Guess : CurrentGuesses)
 	{
-		for (short Index = 0; Index < 5; Index++)
+		for (short Index = 0; Index < WORD_LENGTH; Index++)
 		{
 			ActiveChars[Index].insert(Guess[Index]);
 		}
 	}
 
-	for (short Index = 0; Index < 5; Index++)
+	for (short Index = 0; Index < WORD_LENGTH; Index++)
 	{
-		ActiveChars[Index].insert(Word[Index]);
-
 		unsigned int UsedChars = ActiveChars[Index].Bitmask & FullCoverage[Index].Bitmask;
 		Result += Quickset(UsedChars).BitCount();
 	}
@@ -47,14 +35,16 @@ short kilordle::CalculatePerformanceOfGuess(const std::vector<Quickset> &FullCov
 	return Result;
 }
 
-void kilordle::FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vector<const char*> &CurrentGuesses)
+void kilordle::BestFirstSolver::FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vector<const char*> &CurrentGuesses)
 {
 	const char* BestGuess = WORDS[0];
 	short BestGuessHitCount = 0;
 
 	for (const char* Word : WORDS)
 	{
-		short HitCount = CalculatePerformanceOfGuess(FullCoverage, CurrentGuesses, Word);
+		CurrentGuesses.push_back(Word);
+		short HitCount = CalculatePerformance(FullCoverage, CurrentGuesses);
+		CurrentGuesses.pop_back();
 
 		if (HitCount > BestGuessHitCount)
 		{
@@ -65,7 +55,9 @@ void kilordle::FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vec
 
 	for (const char* Word : WORDLES)
 	{
-		short HitCount = CalculatePerformanceOfGuess(FullCoverage, CurrentGuesses, Word);
+		CurrentGuesses.push_back(Word);
+		short HitCount = CalculatePerformance(FullCoverage, CurrentGuesses);
+		CurrentGuesses.pop_back();
 
 		if (HitCount > BestGuessHitCount)
 		{
@@ -77,33 +69,11 @@ void kilordle::FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vec
 	CurrentGuesses.push_back(BestGuess);
 }
 
-const char* kilordle::FindWord(const char* x)
+void kilordle::BestFirstSolver::Solve()
 {
-	for (const char* Word : WORDS)
-	{
-		if (strncmp(Word, x, 5) == 0)
-		{
-			return Word;
-		}
-	}
+	constexpr char GUESS_DEPTH = 38;
 
-	for (const char* Word : WORDLES)
-	{
-		if (strncmp(Word, x, 5) == 0)
-		{
-			return Word;
-		}
-	}
-}
-
-int kilordle::main()
-{
-	std::cout << "Welcome to kilordle solver" << std::endl;
-
-	constexpr double ProbilbilityWordChosen = 1.0 - ((NUM_WORDLES - 1000.0) / NUM_WORDLES);
-	constexpr char GUESS_LIMIT = 38;
-
-	std::vector<Quickset> FullCoverage(5);
+	std::vector<Quickset> FullCoverage(WORD_LENGTH);
 
 	ComputeFullCoverage(FullCoverage);
 
@@ -111,14 +81,14 @@ int kilordle::main()
 
 	std::vector<const char*> CurrentGuesses;
 
-	for (char Index = 0; Index < GUESS_LIMIT; Index++)
+	for (char Index = 0; Index < GUESS_DEPTH; Index++)
 	{
 		FindNextGuess(FullCoverage, CurrentGuesses);
 	}
 
 	for (auto X : CurrentGuesses)
 	{
-		for (short Index = 0; Index < 5; Index++)
+		for (short Index = 0; Index < WORD_LENGTH; Index++)
 		{
 			std::cout << X[Index];
 		}
@@ -126,7 +96,7 @@ int kilordle::main()
 		std::cout << std::endl;
 	}
 
-	std::cout << std::endl << "list performance: " << CalculatePerformanceOfGuess(FullCoverage, CurrentGuesses, CurrentGuesses[0]) << std::endl;
+	std::cout << std::endl << "list performance: " << (unsigned int)CalculatePerformance(FullCoverage, CurrentGuesses) << std::endl;
 
 	std::vector<const char*> RedditOptimalGuesses;
 
@@ -161,7 +131,7 @@ int kilordle::main()
 	RedditOptimalGuesses.push_back(FindWord("qajaq"));
 	RedditOptimalGuesses.push_back(FindWord("squib"));
 
-	std::cout << std::endl << "reddit optimized list performance: " << CalculatePerformanceOfGuess(FullCoverage, RedditOptimalGuesses, RedditOptimalGuesses[0]) << std::endl;
+	std::cout << std::endl << "reddit optimized list performance: " << (unsigned int)CalculatePerformance(FullCoverage, RedditOptimalGuesses) << std::endl;
 
 	unsigned int MaxHull = 0;
 
@@ -171,6 +141,4 @@ int kilordle::main()
 	}
 
 	std::cout << std::endl << "max possible performance: " << MaxHull << std::endl;
-
-	return 0;
 }
