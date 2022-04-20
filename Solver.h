@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Quickset.h"
+#include "Words.h"
 
 #include <vector>
+#include <queue>
 
 namespace kilordle
 {
@@ -17,6 +19,19 @@ namespace kilordle
 		std::vector<Quickset> FullCoverage;
 		unsigned int FullCoveragePerformance;
 		std::vector<const char*> RedditOptimalGuesses;
+		bool PrintFlag;
+	};
+
+	struct Node
+	{
+		std::vector<const char*> Guesses;
+		unsigned int Performance;
+		Quickset Coverage[WORD_LENGTH];
+
+		unsigned char GetCoverageBits(const std::vector<Quickset> &FullCoverage) const;
+
+		Node();
+		friend bool operator<(const Node &Left, const Node &Right);
 	};
 
 	class BestFirstSolver : public Solver
@@ -24,10 +39,9 @@ namespace kilordle
 	public:
 		BestFirstSolver();
 		virtual unsigned short Solve() override;
+		void FindNextGuess(const std::vector<Quickset>& FullCoverage, std::vector<const char*>& CurrentGuesses);
 
 		std::vector<const char*> CurrentGuesses;
-	private:
-		void FindNextGuess(const std::vector<Quickset> &FullCoverage, std::vector<const char*> &CurrentGuesses);
 	};
 
 	class ExhuastiveSolver : public Solver
@@ -35,5 +49,9 @@ namespace kilordle
 	public:
 		ExhuastiveSolver();
 		virtual unsigned short Solve() override;
+
+		void MakeNextGuess(const Node& Parent);
+
+		std::priority_queue<Node> SearchTree;
 	};
 }

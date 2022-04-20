@@ -1,8 +1,8 @@
 #include "Solver.h"
-#include "Words.h"
 
 #include <iostream>
 #include <algorithm>
+#include <limits>
 
 int main()
 {
@@ -20,6 +20,7 @@ kilordle::Solver::Solver()
 	ComputeFullCoverage(FullCoverage);
 
 	FullCoveragePerformance = 0;
+	PrintFlag = true;
 
 	for (auto X : FullCoverage)
 	{
@@ -134,16 +135,22 @@ kilordle::BestFirstSolver::BestFirstSolver() : Solver()
 
 unsigned short kilordle::BestFirstSolver::Solve()
 {
-	std::cout << "best-first optimized guesses are: " << std::endl;
+	if (PrintFlag)
+	{
+		std::cout << "best-first optimized guesses are: " << std::endl;
+	}
 
 	while (CalculatePerformance(FullCoverage, CurrentGuesses) < FullCoveragePerformance)
 	{
 		FindNextGuess(FullCoverage, CurrentGuesses);
 	}
 
-	PrintGuesses(CurrentGuesses);
+	if (PrintFlag)
+	{
+		PrintGuesses(CurrentGuesses);
 
-	std::cout << std::endl << "we did it in " << CurrentGuesses.size() << " guesses" << std::endl;
+		std::cout << std::endl << "we did it in " << CurrentGuesses.size() << " guesses" << std::endl;
+	}
 
 	return CurrentGuesses.size();
 }
@@ -154,6 +161,100 @@ kilordle::ExhuastiveSolver::ExhuastiveSolver() : Solver()
 
 unsigned short kilordle::ExhuastiveSolver::Solve()
 {
+	Node Solution;
+	Solution.Performance = USHRT_MAX;
 
-	return 100U;
+	MakeNextGuess(Node());
+
+	while (SearchTree.size() > 0)
+	{
+		Node Top = SearchTree.top();
+		SearchTree.pop();
+
+		if (Top.GetCoverageBits(FullCoverage) >= FullCoveragePerformance)
+		{
+			if (Top.Performance < Solution.Performance)
+			{
+				Solution = Top;
+			}
+		}
+		else
+		{
+			MakeNextGuess(Top);
+		}
+
+	}
+
+	if (PrintFlag)
+	{
+		PrintGuesses(Solution.Guesses);
+	}
+
+	return Solution.Performance;
+}
+
+void kilordle::ExhuastiveSolver::MakeNextGuess(const Node &Parent)
+{
+	BestFirstSolver BFS;
+	BFS.PrintFlag = false;
+
+	for (const char* Word : WORDS)
+	{
+		Node CurrentNode;
+		CurrentNode.Guesses = Parent.Guesses;
+		CurrentNode.Guesses.push_back(Word);
+
+		for (unsigned char Index = 0; Index < WORD_LENGTH; Index++)
+		{
+			CurrentNode.Coverage[Index].insert(Word[Index]);
+		}
+
+		if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
+		{
+			BFS.CurrentGuesses = CurrentNode.Guesses;
+			CurrentNode.Performance = BFS.Solve();
+			SearchTree.push(CurrentNode);
+		}
+	}
+
+	for (const char* Word : WORDLES)
+	{
+		Node CurrentNode;
+		CurrentNode.Guesses = Parent.Guesses;
+		CurrentNode.Guesses.push_back(Word);
+
+		for (unsigned char Index = 0; Index < WORD_LENGTH; Index++)
+		{
+			CurrentNode.Coverage[Index].insert(Word[Index]);
+		}
+
+		if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
+		{
+			BFS.CurrentGuesses = CurrentNode.Guesses;
+			CurrentNode.Performance = BFS.Solve();
+			SearchTree.push(CurrentNode);
+		}
+	}
+}
+
+unsigned char kilordle::Node::GetCoverageBits(const std::vector<Quickset> &FullCoverage) const
+{
+	unsigned char Result = 0;
+
+	for (short Index = 0; Index < WORD_LENGTH; Index++)
+	{
+		Result += Quickset(Coverage[Index].Bitmask & FullCoverage[Index].Bitmask).BitCount();
+	}
+
+	return Result;
+}
+
+kilordle::Node::Node()
+{
+	Performance = 0;
+}
+
+bool kilordle::operator<(const Node &Left, const Node &Right)
+{
+	return Left.Performance > Right.Performance; // goal is to minimize number of guesses
 }
