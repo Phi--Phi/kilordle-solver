@@ -4,7 +4,8 @@
 #include "Words.h"
 
 #include <vector>
-#include <concurrent_priority_queue.h>
+#include <queue>
+#include <mutex>
 
 namespace kilordle
 {
@@ -25,7 +26,7 @@ namespace kilordle
 	struct Node
 	{
 		std::vector<const char*> Guesses;
-		unsigned int Performance;
+		double Performance;
 		Quickset Coverage[WORD_LENGTH];
 
 		unsigned char GetCoverageBits(const std::vector<Quickset> &FullCoverage) const;
@@ -52,6 +53,7 @@ namespace kilordle
 
 		void MakeNextGuess(const Node& Parent);
 
-		concurrency::concurrent_priority_queue<Node> SearchTree;
+		std::priority_queue<Node> SearchTree;
+		std::mutex SearchTreeLock;
 	};
 }

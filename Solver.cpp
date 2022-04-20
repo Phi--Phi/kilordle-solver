@@ -1,4 +1,5 @@
 #include "Solver.h"
+#include "ThreadPool.h"
 
 #include <iostream>
 #include <algorithm>
@@ -163,28 +164,52 @@ kilordle::ExhuastiveSolver::ExhuastiveSolver() : Solver()
 unsigned short kilordle::ExhuastiveSolver::Solve()
 {
 	Node Solution;
+	std::mutex SolutionMutex;
 	Solution.Performance = USHRT_MAX;
 
 	MakeNextGuess(Node());
 
-	while (SearchTree.size() > 0)
+	std::function<void()> KiloGuess = [this, &Solution, &SolutionMutex]()
 	{
-		Node Top;
-		SearchTree.try_pop(Top);
-
-		if (Top.GetCoverageBits(FullCoverage) >= FullCoveragePerformance)
+		unsigned long long IterationCount = 0;
+		while (SearchTree.size() > 0 && IterationCount < 10000U)
 		{
-			if (Top.Performance < Solution.Performance)
+			SearchTreeLock.lock();
+			Node Top = SearchTree.top();
+			SearchTree.pop();
+			SearchTreeLock.unlock();
+
+			SolutionMutex.lock();
+
+			if (Top.GetCoverageBits(FullCoverage) >= FullCoveragePerformance)
 			{
-				Solution = Top;
+				if (Top.Performance < Solution.Performance)
+				{
+					Solution = Top;
+				}
+				SolutionMutex.unlock();
 			}
-		}
-		else
-		{
-			MakeNextGuess(Top);
-		}
+			else
+			{
+				SolutionMutex.unlock();
+				MakeNextGuess(Top);
+			}
 
+			IterationCount++;
+		}
+	};
+
+	KiloGuess();
+
+	ThreadPool Pool(16U);
+
+	for (unsigned int Index = 0U; Index < 16U; Index++)
+	{
+		Pool.AddTask(KiloGuess);
 	}
+
+	Pool.StartPool();
+	Pool.Join();
 
 	if (PrintFlag)
 	{
@@ -196,67 +221,44 @@ unsigned short kilordle::ExhuastiveSolver::Solve()
 
 void kilordle::ExhuastiveSolver::MakeNextGuess(const Node &Parent)
 {
-	std::thread* WordlesThreadPool[NUM_WORDLES];
-	std::thread* WordsThreadPool[NUM_WORDS];
-
 	for (unsigned short Index = 0; Index < NUM_WORDLES; Index++)
 	{
-		WordlesThreadPool[Index] = new std::thread([this](const Node &Parent, unsigned short Index)
+		Node CurrentNode;
+		CurrentNode.Guesses = Parent.Guesses;
+		CurrentNode.Guesses.push_back(WORDLES[Index]);
+
+		for (unsigned char CIndex = 0; CIndex < WORD_LENGTH; CIndex++)
 		{
-			Node CurrentNode;
-			BestFirstSolver BFS;
-			BFS.PrintFlag = false;
-			CurrentNode.Guesses = Parent.Guesses;
-			CurrentNode.Guesses.push_back(WORDLES[Index]);
+			CurrentNode.Coverage[CIndex].insert(WORDLES[Index][CIndex]);
+		}
 
-			for (unsigned char CIndex = 0; CIndex < WORD_LENGTH; CIndex++)
-			{
-				CurrentNode.Coverage[CIndex].insert(WORDLES[Index][CIndex]);
-			}
-
-			if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
-			{
-				BFS.CurrentGuesses = CurrentNode.Guesses;
-				CurrentNode.Performance = BFS.Solve();
-				SearchTree.push(CurrentNode);
-			}
-		}, Parent, Index);
+		if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
+		{
+			CurrentNode.Performance = CurrentNode.GetCoverageBits(FullCoverage) / CurrentNode.Guesses.size();
+			SearchTreeLock.lock();
+			SearchTree.push(CurrentNode);
+			SearchTreeLock.unlock();
+		}
 	}
 
 	for (unsigned short Index = 0; Index < NUM_WORDS; Index++)
 	{
-		WordsThreadPool[Index] = new std::thread([this](const Node &Parent, unsigned short Index)
+		Node CurrentNode;
+		CurrentNode.Guesses = Parent.Guesses;
+		CurrentNode.Guesses.push_back(WORDS[Index]);
+
+		for (unsigned char CIndex = 0; CIndex < WORD_LENGTH; CIndex++)
 		{
-			Node CurrentNode;
-			BestFirstSolver BFS;
-			BFS.PrintFlag = false;
-			CurrentNode.Guesses = Parent.Guesses;
-			CurrentNode.Guesses.push_back(WORDS[Index]);
+			CurrentNode.Coverage[CIndex].insert(WORDS[Index][CIndex]);
+		}
 
-			for (unsigned char CIndex = 0; CIndex < WORD_LENGTH; CIndex++)
-			{
-				CurrentNode.Coverage[CIndex].insert(WORDS[Index][CIndex]);
-			}
-
-			if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
-			{
-				BFS.CurrentGuesses = CurrentNode.Guesses;
-				CurrentNode.Performance = BFS.Solve();
-				SearchTree.push(CurrentNode);
-			}
-		}, Parent, Index);
-	}
-
-	for (unsigned short Index = 0; Index < NUM_WORDLES; Index++)
-	{
-		WordlesThreadPool[Index]->join();
-		delete WordlesThreadPool[Index];
-	}
-
-	for (unsigned short Index = 0; Index < NUM_WORDS; Index++)
-	{
-		WordsThreadPool[Index]->join();
-		delete WordsThreadPool[Index];
+		if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
+		{
+			CurrentNode.Performance = CurrentNode.GetCoverageBits(FullCoverage) / CurrentNode.Guesses.size();
+			SearchTreeLock.lock();
+			SearchTree.push(CurrentNode);
+			SearchTreeLock.unlock();
+		}
 	}
 }
 
@@ -279,5 +281,5 @@ kilordle::Node::Node()
 
 bool kilordle::operator<(const Node &Left, const Node &Right)
 {
-	return Left.Performance > Right.Performance; // goal is to minimize number of guesses
+	return Left.Performance < Right.Performance;
 }
