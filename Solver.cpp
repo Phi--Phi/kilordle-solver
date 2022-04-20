@@ -3,12 +3,13 @@
 #include <iostream>
 #include <algorithm>
 #include <limits>
+#include <thread>
 
 int main()
 {
-	kilordle::BestFirstSolver BFS;
+	kilordle::ExhuastiveSolver Exhuast;
 
-	BFS.Solve();
+	Exhuast.Solve();
 
 	return 0;
 }
@@ -168,8 +169,8 @@ unsigned short kilordle::ExhuastiveSolver::Solve()
 
 	while (SearchTree.size() > 0)
 	{
-		Node Top = SearchTree.top();
-		SearchTree.pop();
+		Node Top;
+		SearchTree.try_pop(Top);
 
 		if (Top.GetCoverageBits(FullCoverage) >= FullCoveragePerformance)
 		{
@@ -198,42 +199,63 @@ void kilordle::ExhuastiveSolver::MakeNextGuess(const Node &Parent)
 	BestFirstSolver BFS;
 	BFS.PrintFlag = false;
 
-	for (const char* Word : WORDS)
+	std::thread* WordlesThreadPool[NUM_WORDLES];
+	std::thread* WordsThreadPool[NUM_WORDS];
+
+	for (unsigned short Index = 0; Index < NUM_WORDLES; Index++)
 	{
-		Node CurrentNode;
-		CurrentNode.Guesses = Parent.Guesses;
-		CurrentNode.Guesses.push_back(Word);
-
-		for (unsigned char Index = 0; Index < WORD_LENGTH; Index++)
+		WordlesThreadPool[Index] = new std::thread([&Parent, Index, &BFS, this]()
 		{
-			CurrentNode.Coverage[Index].insert(Word[Index]);
-		}
+			Node CurrentNode;
+			CurrentNode.Guesses = Parent.Guesses;
+			CurrentNode.Guesses.push_back(WORDLES[Index]);
 
-		if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
-		{
-			BFS.CurrentGuesses = CurrentNode.Guesses;
-			CurrentNode.Performance = BFS.Solve();
-			SearchTree.push(CurrentNode);
-		}
+			for (unsigned char CIndex = 0; CIndex < WORD_LENGTH; CIndex++)
+			{
+				CurrentNode.Coverage[CIndex].insert(WORDLES[Index][CIndex]);
+			}
+
+			if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
+			{
+				BFS.CurrentGuesses = CurrentNode.Guesses;
+				CurrentNode.Performance = BFS.Solve();
+				SearchTree.push(CurrentNode);
+			}
+		});
 	}
 
-	for (const char* Word : WORDLES)
+	for (unsigned short Index = 0; Index < NUM_WORDS; Index++)
 	{
-		Node CurrentNode;
-		CurrentNode.Guesses = Parent.Guesses;
-		CurrentNode.Guesses.push_back(Word);
-
-		for (unsigned char Index = 0; Index < WORD_LENGTH; Index++)
+		WordsThreadPool[Index] = new std::thread([&Parent, Index, &BFS, this]()
 		{
-			CurrentNode.Coverage[Index].insert(Word[Index]);
-		}
+			Node CurrentNode;
+			CurrentNode.Guesses = Parent.Guesses;
+			CurrentNode.Guesses.push_back(WORDS[Index]);
 
-		if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
-		{
-			BFS.CurrentGuesses = CurrentNode.Guesses;
-			CurrentNode.Performance = BFS.Solve();
-			SearchTree.push(CurrentNode);
-		}
+			for (unsigned char CIndex = 0; CIndex < WORD_LENGTH; CIndex++)
+			{
+				CurrentNode.Coverage[CIndex].insert(WORDS[Index][CIndex]);
+			}
+
+			if (CurrentNode.GetCoverageBits(FullCoverage) > Parent.GetCoverageBits(FullCoverage))
+			{
+				BFS.CurrentGuesses = CurrentNode.Guesses;
+				CurrentNode.Performance = BFS.Solve();
+				SearchTree.push(CurrentNode);
+			}
+		});
+	}
+
+	for (unsigned short Index = 0; Index < NUM_WORDLES; Index++)
+	{
+		WordlesThreadPool[Index]->join();
+		delete WordlesThreadPool[Index];
+	}
+
+	for (unsigned short Index = 0; Index < NUM_WORDS; Index++)
+	{
+		WordsThreadPool[Index]->join();
+		delete WordsThreadPool[Index];
 	}
 }
 

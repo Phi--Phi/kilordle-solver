@@ -4,7 +4,7 @@
 #include "Words.h"
 
 #include <vector>
-#include <queue>
+#include <concurrent_priority_queue.h>
 
 namespace kilordle
 {
@@ -52,6 +52,6 @@ namespace kilordle
 
 		void MakeNextGuess(const Node& Parent);
 
-		std::priority_queue<Node> SearchTree;
+		concurrency::concurrent_priority_queue<Node> SearchTree;
 	};
 }
