@@ -196,17 +196,16 @@ unsigned short kilordle::ExhuastiveSolver::Solve()
 
 void kilordle::ExhuastiveSolver::MakeNextGuess(const Node &Parent)
 {
-	BestFirstSolver BFS;
-	BFS.PrintFlag = false;
-
 	std::thread* WordlesThreadPool[NUM_WORDLES];
 	std::thread* WordsThreadPool[NUM_WORDS];
 
 	for (unsigned short Index = 0; Index < NUM_WORDLES; Index++)
 	{
-		WordlesThreadPool[Index] = new std::thread([&Parent, Index, &BFS, this]()
+		WordlesThreadPool[Index] = new std::thread([this](const Node &Parent, unsigned short Index)
 		{
 			Node CurrentNode;
+			BestFirstSolver BFS;
+			BFS.PrintFlag = false;
 			CurrentNode.Guesses = Parent.Guesses;
 			CurrentNode.Guesses.push_back(WORDLES[Index]);
 
@@ -221,14 +220,16 @@ void kilordle::ExhuastiveSolver::MakeNextGuess(const Node &Parent)
 				CurrentNode.Performance = BFS.Solve();
 				SearchTree.push(CurrentNode);
 			}
-		});
+		}, Parent, Index);
 	}
 
 	for (unsigned short Index = 0; Index < NUM_WORDS; Index++)
 	{
-		WordsThreadPool[Index] = new std::thread([&Parent, Index, &BFS, this]()
+		WordsThreadPool[Index] = new std::thread([this](const Node &Parent, unsigned short Index)
 		{
 			Node CurrentNode;
+			BestFirstSolver BFS;
+			BFS.PrintFlag = false;
 			CurrentNode.Guesses = Parent.Guesses;
 			CurrentNode.Guesses.push_back(WORDS[Index]);
 
@@ -243,7 +244,7 @@ void kilordle::ExhuastiveSolver::MakeNextGuess(const Node &Parent)
 				CurrentNode.Performance = BFS.Solve();
 				SearchTree.push(CurrentNode);
 			}
-		});
+		}, Parent, Index);
 	}
 
 	for (unsigned short Index = 0; Index < NUM_WORDLES; Index++)
